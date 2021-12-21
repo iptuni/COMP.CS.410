@@ -1,0 +1,701 @@
+Luento 1
+========
+Ohjelmien virtuaalikone
+-----------------------
+- kj tarjoaa palveluita ja resursseja ohjelmien käyttöön
+- kj etsii tarvittavan muistialueen exe binääri ohjelmalle ja data-alueita, myös extra tilaa (ehkä myöhemmin)
+- kj:n kannalta on yksi tapa käynnistää ohjelma, ei hajauteta
+- kj hallinnoi muistia, voi kieltää käynnistyksen, tekee kaikki päätökset
+- kj varaa ensimmäisen säikeen, aina pitää olla sellainen
+- ohjelma ei aloita main:stä, muistissa on bootstrap koodi joka hoitaa ohjelmointikielen alustukset
+- pistää talteen liput ja argumentit [komentoriviltä main(int argc)] jne. alustus tehdään ensimmäisenä
+- c++:ssa ennen main:ia alustetaan globaalit muuttujat
+- std::cout on kirjastosta tullut objekti, joka myös tallennetaan muistiin
+- jos 100 irc clienttia, jotka käyttää kirjastoa, niin optimoitu. ei monisteta turhaan 
+- cout olion totetus on räätälöity tiettyyn kj:ään, esim linux tai windows
+- exe:ä ei voi siirtää linuxiin (tiedostoformaatti eri, systeemikutsut eri myös)
+- pitää antaa target exelle, yleensä sama kj on oletus
+- emulaattorit on olemassa, ovat lisäosia
+- ohjelman lopettaminen on myös palvelupyyntö
+- jos exit onnistuu niin ohjelmasta ei ikinä palata, kj vapauttaa kaikki resurssit ja poistetaan suorituksesta
+- unix:ssa exit palauttaa numeron EXIT_SUCCESS kj:lle
+- kj pitää kirjaa mitkä tiedostot on varattu tietorakenteissa, kun lopettaa ohjelman niin se sulkee ne 
+- ystävälliset ohjelmat vapauttavat tiedostot ja verkkoyhteydet kun käyttö on lopetettu, kun ei enää tarvitse niitä
+- ohjelma voi myös toimia väärin, päätyä virhetilaan, kj voi myös poistaa ohjelman itse ja vapauttaa resurssit ettei se jää kellumaan
+- ympäristö: virtuaalikone tarkoittaa muistiympäristöä tässä tilanteessa
+
+    kerros          rajapinta
+    -------------------------
+    loppukäyttäjä   
+                    käyttöliittymä
+    sovellus
+                    ohjelmointikieli
+    kääntäjä
+                    virtuaalikone
+    käyttöjärjestelmä
+                    arkkitehtuuri
+    laitteisto
+
+- kj kätkee asioita ajossa olevalta ohjelmalta
+- binääri kuvittelee ei tiedä missä muistit onko säie käynnissä jne.
+- todelliset yksityiskohdat ovat eri, muistiosoitteet ihan eri oikeasti
+- kj voidaan kirjoittaa monelle eri prosessori käskykannalle
+- kj tarjoaa palveluita sovellusohjelmoille ja kirjastojen tekijöille
+
+Luento 2
+========
+-   OHJELMAT (prosessi)
+    KJ
+    HW
+- kj:n sisällä tietorakenteet jokaista prosessia kohden, kirjanpito
+- ajon aikana kj antaa palveluita prosessille
+- kun kone käynnistyy, ensin kj ladataan sinne, sitten kj tekee skannauksen otetaan kj:n hallintaan
+- tarjoaa sitten hallitusti oheislaitteita palveluina (esim prosessori, muisti)
+- prosessit ei normaalisti ikinä pääse keskustelemaan laitteiston kanssa
+- kj injektoi itsensä prosessien ja laitteston väliin
+- kj myös valvoo ettei mikään mene pieleen
+- kj:ssa on ydionsuus ja runsaasti kirjastoja
+- grafiikka kortit voivat mahdollisesti suoraan käyttää laitteistoa 
+- kj:n puolella ei ole käsitettä "ikkunasta" tai "menusta"
+- operaatiot esim. liukuluku laskenta voi tapahtua eri paikoissa (laittestolla tai kirjastossa)
+- myös voi olla välimuoto, emuloida jakolasku kj:ssa jos ei tuettu laitteistolla
+- binääri ei tiedä siitä mitään, että tuli virhekäsky ja kj hoiti homman (se vaan toimii)
+- prosessi on aina konekoodia, assemblyssa yksi rivi on yksi konekäsky
+- hex tavut ladataan exe:stä muistiin ja suoritetaan prosessilla
+- mikään suojaus mekanismi ei luota kääntäjään että se tekisi tarkistuksia
+- asm binäärin voi tehdä itse, siksi ei voi luottaa kääntäjään
+- kj pistää koodin vaan suoritukseen jos on oikeassa formaatissa
+- _start symbolista oikeasti alkaa linuxissa, asm tasolla ei näy paikkaa
+- syscall, pyydetään kj:lta palvelu
+- suurin osa ohjelmista käyttää usein paljon palveluita
+- yksi syscall, A rekisteri on syscall numero, loput rekisterit (B, C jne.) ovat parametreja, näin kutsutaan
+- kj ja prosessit ovat kaikki samassa muistiavaruudessa, vaikka loogisesti eri juttuja
+- oikeasti kj ei "suorita koodia", cpu tekee sen
+- oikeasti kj suorittaa hyppykäskyn start kohtaan. kj ei ole aktiivinen tekijä, sillä ei ole tiettyä säiettä
+- kj luovuttaa kontrollin ja antaa ladatun ohjelman suorittaa
+- jos tulee palvelupyyntö niin kj:n suoritus palaa takaisin
+- kj:n täytyy olla huolellisesti rakennettu prosessorin arkkitehtuurin mukaan
+- jotkut rekisterit voivat olla pakotettuja, esim. rekisteri 15 on vain cpu:n käytössä
+- KJ sukupolvet. 0: ei kj, ei suojaksia 1. yksiajo, suojaus spooling, swapping 2. moniajo, vuoronnos, monta käyttäjää 3. virtuaalimuisti 4. hajatetut & verkkojärj.
+- spooling: kun ohjelma suoriutuu, niin samalla ladataan seuraava ohjelma
+- swapping/heittovaihto: kaksi ohjelmaa etenevät rinnakkain, vaihdetaan koko prosessi muistista edes takaisin
+- uudet cput voivat tehdä out of order execution, eli ne ovat monimutkaisia
+- KJ:n ei tarvi tietää jokaista yksityiskohtaa laitteistoarkkitehtuurista
+- riittävä kuvaa yhdistetty kolmio: CPU, MEM, I/O
+- ongelmat: laitteiston suojaus, KJ:n suojaus, ohjelmien suojaus
+- suojaukset prosessikohtaisia: ohjelma saa sotkea omaa dataa, muttei kj:n eikä naapurin ohjelman puolelle
+- ikuinen silmukka, systeemi jämähtää. tarvitaan ohitusreitti, joskus hypätään kj:n puolelle jotta saadaan poistettua ohjelman
+- kellokeskeytys, säännöllisin väliajoin tarkistetaan että ohjelma ei ole jumissa
+- monet ratkaisut onglemiin laitteston puolelta, nopeat & turvalliset tavat
+- suojaus ongelmat voi tulla kun muistin lukeminen ja kirjoitus käskyt suoritetaan
+- fence rajarekisteri, kj ja ohjelman muistialueen välillä, tarkistetaan että on suurempi tai pienempi kun fence.
+- rakennettu prosessorin sisään, käytännössä ilmainen operaatio (ei tehdä softalla)
+- ilmoitetaan kj:lle jos tulee virhe, eli menee fencen väärälle puolelle
+
+Luento 3
+========
+- PC program counter menee myös fence checkin kautta
+- kaksi tilaa prosessorissa: supervisor tila ja normaali tila
+- fence rekisterin arvoa voi muuttaa vain supervisor tilassa
+- laskuri timer, pidetään kirjaa montako konekäskyä suoritettu, jos menee nollaan niin palautetaan kj:n puolelle
+- fence rekisteri pitää olla myös suojattu
+- vain kj etuoikeutetussa tilassa saa muuttaa fence ja timer rekistereitä
+- kj:n pitää noudattaa prosessorin arkkitehtuuria, mutta kj voi päättää miten suhtautuu poikkeustilanteisiin
+- service call:in (SVC) avulla päästään hallitusti kj:n puolelle
+- sille annetaan joku koodinumero (esim. instr.addr tai tiedoston avaaminen), jonka se lähtee suoritamaan
+- jos on yksi hallittu tapa suorittaa käsky, niin siitä seuraa että on vähemmän mahdollisia virhekanavia
+- service call:in jälkeen palaa hallitusti takaisin oikeaan kohtaan, joka on aikaisemmin talletettu johonkin rekisteriin
+- konekäskyt jakautuu kahtia: tavalliset (add, store, saa suorittaa aina) ja etuoikeutetut I/O (vain kj saa suorittaa)
+- kääntäjät tuottavat vain user mode käskyillä normaalisti
+- systeemikutsut yleensä pysyvät samoilla numeroilla/parametreilla, taaksepäin-yhteensopivuus
+- systeemikutsut määritellään C-kielen kautta, helpompaa kun ei tarvita assembleria
+- näin myös voi koodin voi kääntää eri cpu tyypille
+- keskeytys! cpu ei tarvitse odottaa while loopissa, vaan voi tehdä muita asioita
+- cpu tekee omia hyötyjuttuja ja laitteisto lähettää keskeytyksen kun se on valmis
+- I/O keskeytys voi tulla koska tahansa (ei kuitenkaan keskellä konekäskyä)
+- ratkaisu: tallenetaan prosessin ympäristö (CONTEXT) keskeytyksen tullessa ja siirryttäessä palvelurutiiniin (SWITCH)
+
+Luento 4
+========
+- direct memory access (DMA), voidaan isoja operaatiota käynnistää ilman että kj:n täytyy olla siinä välissä ollenkaan
+- eli cpu:n ei tarvitse puuttua muistin kirjoittamiseen vaan pystyy tehdä hyötykuormaa täydellä vauhdilla ja käyttökeskeytyksellä ilmoitetaan kj:lle kun on valmista
+- spooling: voidaan tehdä IO:ta sillä välin kun cpu toimii
+- swapping: tilatalletus ja palautus
+- kj voi tehdä täydellisen taltioinnin kaikista ohjelmista
+- vuoronnos (scheduling) on suoritusvuorojen jakaminen prosessien välillä
+- irrottava vuoronnus (pre-emptive scheduling), jos ohjelma poistetaan "väkisin", kellokeskeytyksen takia (vaihtoehto on se että ohjelma itse luovuttaa kontrollin)
+- jos 8 corea, voi olla 8 säiettä suorituksessa
+- vuorontoja on kätketty palvelu, ohjelma ei keskustele vuorontojan kanssa
+- prosesseille voi antaa eri prioriteetteja 
+- jos ohjelma palaa systeemikutsuilla niin jos vain sitten vaihdetaan kontekstia, niin voi olla epäreilu muille jos ei tee systeemikutsuja usein
+- tätä varten irrottava vuoronnus
+- moniajo on kun odottava työ otetaan muistista ja vaihdetaan suoritettavaan
+- prosessi: muistialue joka on varattu ohjelman käyttöön
+- tässä alueessa on koodi ja muuttujat
+- pino, stack pointer: osoittaa mitä asiaa on viimeksi on ajettu, eli pinon päälle
+- pino alkaa ylhäältä, dynaaminen muisti alhaalta
+- pinossa siis sisältää prosessin dataa, esim. funktion muuttujia ja parametreja
+- prosesseja voi luoda, esim jokainen chrome tab, oma prosessi
+- prosessitaulu sisältää kaiken tiedon paitsi säikeet, esim kauanko ollut käynnissä
+- muistisuojaus: myös jokaisella prosessilla oma prosessitaulussa
+- auttaa myös jos yksi chrome ikkuna kaatuu niin se ei vaikuta muihin
+- on olemassa palvelupyyntöjä, joilla voi jakaa prosessien välissä muistia tai lähettää viestejä
+- oletuksena kuitenkin että jokainen prosessi suojattu
+- miten suojataan jokainen prosessi toisilta? limit ja base rekistereillä
+- limit: maksimi määrä muistia prosessissa, base: mistä prosessi alkaa
+- plussataan base, muokataan joka ikinen muistiviittaus
+- kj voi partitioida muistia, prosesseja voi partioida
+- joka kerta kun vaihdetaan prosessia, niin päivitetetään limit ja base
+- prosessi ei mitenkään pysty osoittamaan muistialueensa ulkopuolelta
+- base varmistaa ettei pysty muistialueen alapuolelle ja limit ettei mene yli
+- virtuaalimuisti: voi speksata niin että jokainen prosessi luulee olevaansa osoitealueella 0-100000
+- base voi itse päättää missä oikeasti, kääntäjän ei tarvitse miettiä muistialueita
+- muistisegmenteissä voi olla enemmän suojauksia, esim. koodisegmenttiin ei saa kirjoittaa mitään
+- linux ei käytä intelin segmenttejä
+- prosessit voivat alkaa toisesta muistipaikasta swappauksen jälkeen, base sallii tämän, ohjelma ei huomaa mitään
+- tehtiin mutkikkaampi muistisysteemistä, mutta nyt tarjoaa lisäominaisuuksia
+- osoiteavaruus (address space), muitiavaruus (memory space)
+- arm:ssa on mpu mikä päättää millä prosessilla on mikäkin lupa
+- tilatalletus, base ja limit ovat osa prosessin tilaa
+- rekisteri CURRENT osoittaa sillä hetkellä suorittamassa olevaa käskyä
+- SET_CURRENT voi asettaa kontekstin, säikeenvaihdot
+- KJ keskeytys: kj keskeytyksen sisällä voi keskeyttää, pino tietorakennetta käyttäen voi tehdä tämän
+- PSW (prosessor status word) on pitää olla mukana kontekstissa, pitää sisällään oltiinko me usermodessa vai ei 
+- IO keskeytys, virhe, SVC tehdään samalla keskeytys tavalla
+- vuorontaja voi päättää palataanko samaan säikeeseen vai vaihdetaanko
+- sitten SET_CURRENT ja RETI (komento joka palaa user puolelle)
+
+Luento 5
+========
+- keskeytys voi johtua -> I/O keskeytys, virhe, SVC -> käsittely ja vuorontaja -> lopuksi SET_CURRENT ja RETI
+- modernissa käyttöjärjestelmässä ohjelma näyttää synkroniselta, esim. IO read file, mutta oikeasti vuorontaja voi ajaa muuta ohjelmaa
+- jos tulee muun ohjelman aikana I/O ready keskeytys, niin käsittelijä ei välttämättä aja heti siihen liittyvää säiettä vaan tekee kirjanpidollisen merkinnän
+- käsittelijä laittaa säikeen READY tilan, vuorontaja on se joka päättää kuitenkin
+- HAL kerros: hardware abstraction layer, keskeytys.c kaikille sama, sitten jokaiselle prosessorille oma toteutus
+- keskeytyksen yhteydessä tehdään ympäristötallennus, mutta kevyempi
+- kontekstin vaihto tallentaa kaikki rekisterit, säikeiden vaihto
+- illegal instruction ja page fault voivat tapahtua konekäskyn aikana
+- page fault, jos tulee virhe ettei ole muistissa jotain, niin kj voi laittaa sinne tiedot ja käynnistää uudelleen käskyn
+- asykroninen keskeytys: reagoidaan tapahtumiin (tulee ulkoiselta laitteelta eikä liity sillä hetkellä suoriettavaan konekäskyyn)
+- synkroninen keskeytys: sekventiaalinen (nykyisen käskyn aiheuttama virhe tai tarkoituksellinen tilanne, systeemikutstu SVC)
+- APIC (advanced programmable interrupt controller) hoitaa I/O keskeytykset multicore CPU:lle
+- käsittelijä reagoida keskeytykseen, reagointi voidaan jaotella: nopea vs. hidas -> sallitaan keskeytykset käsittelijän ajon aikana (hidas) vai ei (nopea)
+- modernisti keskeytykset jaetaan kahteen osaan, ensin top (nopea) haara, merkataan kirjanpito (näin kävi), lisätään se käsittelyjonoon ja palataan takaisin. bottom sitten tekee itse asian
+- top half rajoituksia: se ei liity mitenkään aktiiviseen prosessiin tai sen pinoon
+- suurin osa kj:sta on laiteajureita
+- kuka suorittaa bottom osan? alla esimerkkejä linuxista
+- SOFTIRQ, aliohjelmia joita ajetaan systeemikutsujen yhteydessä
+- niitä voi suorittaa pois kutsun jälkeen, kuitenkin joku yläraja että palaa normi suorituksenen, esim. max 10
+- softirq ei ole säie, vaan pelkkiä lyhyitä funktioita
+- hankalia koodata toimimaan oikein
+- TASKLET, rakennettu softirq:n päälle, ajetaan yhdellä cpu:lla kerrallaan suoritus, lukittu automaattisesti
+- WORK QUEUE: ajetaan ytimen säikeen alla ei ovat mukana normaalissa vuoronnuksessa, säikeen konteksi mahdollistaa nukkumisen
+- jos keskeytyksiä sallita tarpeeksi usein tai systeemikutstu kestää liian kauan, ohjelmat voivat kokea suuria pysähdyksiä
+- täytyy varautua ruuhkautumiseen
+- KJ toiminnot: keskeytysten käsittely, ohjelmien elinkaari (käynnistys, suoritus, lopetus), keskusmuistin hallinta, tiedostojärjestelmät, verkkoprotokollat, oheislaitteiden hallinta
+
+Luento 6
+========
+- KJ arkkitehtuureja: monoliittinen (proseduuriorientoitunut), mikroydin (prosessiorientoitunut)
+- F00F, user modessa voi ajaa käskyn joka jumittaa koneen
+- monoliittinen, kaikki palvelut etuoikeutettuun tilaan, kj:n muistialueen puolelle yhteen läjään
+- voi olla mahdollisuus että jotain menee pieleen kun mutkikkaita juttuja kernelin puolella
+- toinen ääripää: minimi määrä etuoikeutettuun tilaan, mahd. paljon user puolelle
+- mikroytimessä pitää olla keskeytyksen hoitaminen
+- tehokas viestinvälitysmekanismi, kernelin ja prosessien välillä
+- muistialue, minne pistetään viestejä
+- esim. service call voi olla vain viestinvälitys mikorytimen kautta (viestijonoon)
+- open() niin tiedostojärjestelmä on user puolella ohjelma säie, joka ajetaan
+- mikroydin on monimutkikkaampi ja hitaampi, mutta joustavampi
+- jos jossain prosessissa tapahtuu virhe, niin se on ainoa osa järjestelmästä joka kaatuu pois, voidaan käynnistää uudelleen
+- helpompi päivittää kerneli, uusia prosesseja voi käynnistää uudestaan, ei tarvitse bootata koko konetta
+- kannattaako hidastuksesta maksaa? on piilotettua kuitenkin monimutkikkuutta
+- jotkut prosessit enemmän etuoiketettuja kuin muut (laiteajurit)
+- pyyntöjä ei voi sallia vapaasti prosessien välillä, laiteajureille ei voi lähettää suoraan pyyntöjä -> täytyy huolellisesti miettiä kuka saa tehdä mitäkin
+- KJ koodi on binääri-blob joka ladataan käynnistyessä muistiin
+- historiallisesti kankeita, staattisia kernlit
+- vanhassa syysteemissä prosessien maksimi määrä saattoi olla vakio
+- lisääminen tarvitsi kernelin muuttaminen ja uudelleen kääntäminen
+- seuraava askel: otetaan dynaaminen muistinvaraus kernelin sisällä
+- pitää varautua ettei kernelistä lopu muisti, eikä ruuhkautumista synny
+- mac os 10 pystyi toteuttamaan mac os 9 ohjelmia, vaikka eri arkkitehtuuri (pystyi siis emuloimaan), poistui kuitenkin nopeasti
+- nykyään linux on monoliitin ja mikorytimen välimuoto
+- kernelin etuoikeuttetuun tilaan voi ladata (ja poistaa) moduuli, .ko tiedosto
+- täytyy olla tarkka ettei mitä tahansa pistä moduuliin, esim. netistä
+- kätevä systeemi, kun on monia oheislaitteita, niin ei tarvi kaikkea ladata heti
+- voi ladata ja poistaa lisäosia ajossa olevasta ytimestä
+- geneerinen mekanismi, jolla pystyy laittaa koodia ajoon
+- moduulleilla on kaksi käännösmoodia: voi valita otetaanko heti mukaan, vai ladataanko myöhemmin
+
+Luento 7
+========
+- prosessi = suoritettava ohjelma
+- kj:n puolella tiedot ohjelmasta, tietorakenteessa
+- prosessi edustaa ajossa olevaa ohjelmaa, exe on potentiaalinen prosessi
+- käynnistetty prosessi voi käynnistää uusia prosesseja, tämä on normaalitoimintaa eikä tarvitse erikoisoikeuksia
+- 30v sitten yksi suoritussäie/prosessi
+- Process control block (PCB) tietorakenteessa: prosessin tunniste numero, käyttäjä, avoimet tiedostot (ml. verkkoyhteydet), oikeudet, muistihallinnan tiedot, statistiikkaa
+- root käyttäjällä on kaikki systeemikutsut käytössä
+- käyttäjäkohtaiset oikeudet, esim. puhelimissa
+- se linux, sisältää oikeuksien matriisin jossa kaikki oikeudet jokaiselle prosessi/tiedosto kombinaatiolle
+- statistiikka: esim. laskureita montako tavua luettu verkkoyhteyden kautta, prosessoriajan mittaus. tärkeää esim. pilvipalveluissa
+- on mahdollista lähettää signaali prosessille
+- signaalin lähetys, kj:n kautta, user-id:t tarkistetaan, kirjataan tieto kj:n prosessitieto taulukkoon, signaalin totetus hallitusti vasta kun ajo palaa prosessille
+- tiedoston avaus, tiedostolla tunniste jonka prosessi antaa systeemikutsun mukana
+- jokaisella prosessilla oma taulu
+- säie: modernin järjestelmien vuoronnusyksikkö
+- taltioi tarvittavat asiat, jotta kontekstin vaihto voidaan tehdä
+- jokaisella säikeellä oma pino, osa kontekstia
+- fiber - toinen tapa, jossa kaikilla säikeillä on yhteinen pino
+- linuxissa prosessi kutsutaan "task" nimellä
+- yhtä säiettä suorittaa yksi prosessori kerrallaan
+- säikeen tilat: READY, RUN, WAIT
+- RUN -> READY, jos irroitetaan väkisin
+- WAIT tila on esim. että odottaa I/O-operaatiota, tästä tilassa oleva säie ei itse palaa suoritukseen
+- tilakone säikeille (perustilat):
+ uusi      vuoronnus
+ --> [READY] -------> [RUN]
+        ^    <------- |
+ jatkaa |    irroitus | odottaa
+        |             v
+             [WAIT]
+
+- RUN tilassa säikeitä voi olla niin monta kuin fyysistä prosessia
+- reiluus vuoronnuksessa: kaikki saavat suoritusaikaa
+- prosessit tyypillisesti vurottelevat CPU ja IO tarpeissa (tiedoston luku vs. exen kääntäminen)
+- tämä helppo huomata kj:n sisällä ja voidaan hyödynytää vuoronnuspäätöksissä
+- tulevaisuutta ei voi ennustaa, pitää tehdä historian mukaan, voi mennä pieleen
+- osituskäyttö: päätelaitekäyttäjien on saatava samanarvoista palvelua
+- interaktiivinen käyttö: käyttöliittymälle annetaan enemmän aikaa
+- reaaliaikajärjestelmässä vasteaikojen ennustettavuus on tärkeintä
+- tavoitteita: ei luppoaikaa, throughput: mahdollisiman monta ohjelmaa suoritettua loppuun aikayksikössä, minimoidaan säikeen odotteluaikaa, interaktiivisten prosessien vasteaikaa
+- ei ole parasta vuoronnos algoritmia, niin jostain pitää tinkiä.. eli siis kompromisseja
+
+Luento 8
+========
+- tyypillisesti yksi kohta missä vuorontaja tekee päätökset, minne voi hypätä monesta eri paikasta
+- perusalgoritmit: FIFO jono, round robin, kiinteä prioritetti, shorest job next
+- fifo ei tyypillisesti sisällä irroitusta, reilu, helppo toteuttaa
+- round-robin: kuten fifo, mutta tehdään irroitus tietyn ajan jälkeen ja pistetään jonon hännälle
+- round robin:ssa ei tule mitään ektra hyötyä, mutta tekee enemmän interaktiivisesti
+- shortest job next, sjn: on jotain arvioita (statistiikkaa), mistä tiedetään mikä työ on lyhyin niin otetaan se ensin
+- sjn:ssä mahdollisuus nälkiintymiseen, jos tulee koko ajan pikku töitä koko ajan, voi korjata laskurilla
+- prioriteetti käsite: säikeillä prioriteetti arvo, jonot järjestetty eri tasoihin
+- kiinteä prioriteetti: vuorontaja ei koske säikeiden prioriteetteihin, vaan ne menevät aina samoihin jonoihin. luotetaan että säikeet menevät wait tilaan, ettei tule nälkiintymistä
+- adaptiivinen prioriteetti, voi muuttua. kun säike tulee takaisin run tilasta, kun tulee takaisin jonoon niin lasketaan uudestaan prioriteetti
+- esim. paljon suoritusaikaa vienyttä prosessia voidaan alentaa sen prioriteettia
+- voi olla enemmän tiloja: swapped ready, swapped wait, zombie
+- zombie: prosessi mikä on lopettanut suorituksens, mutta silti jäi prosessitauluun
+- swappauksen idea: heitetään koko prosessi pois vähäksi aikaa
+- jos koodi ei ole edes muistissa niin turha on vuorontajan nähdä sitä millään tavalla, mutta pitää kirjanpidon kannalta olla tieto
+- swappaus on prosessikohtaista, eli kaikkien prosessien säikeiden pitää mennä swapped tilaan
+- swapped ready/wait koostuu kahdesta tilasta, koska jos prosessi on swappaus tilassa niin voi tulla IO käsky silä aikaa ja pitää vaihtaa tila: wait -> ready 
+- prosessi voi koostua useammasta säikeestä
+- stop tilaan käyttäjän takia ulkoisesta pyynnöstä (esim. Ctrl+Z). wait tilaan kj:lle tulee sisäinen tapahtuma. stop tilasta ei jatketa ellei käyttäjä itse jatka prosessia
+- käytännössä: dynaaminen prioriteetti, linux O(1), linux CFS (completely fair scheduler)
+- nice-arvo, käyttäjän antama numero prosessille joka antaa ekstra-ystävällisyyttä (lisää prioriteettia)
+- linux O(1), samanlainen kuin adaptiivinen prioriteetti, taso eri jonoja
+- pitää hakea jono, mistä otetaan seuraava säie suoritettavaksi, ei ole O(1)
+- intellillä on käsky joka kertoo bittimatriisista, heti kohta missä on ensimmäinen ykkönen (korkein prioriteetti)
+- bittikartta on pystyssä, joten pystyy heti näkemään missä prioritetti jonossa on säikeitä, pitää myös muistaa päivittää sitä
+- [000101110011] eli tässä 4. prioriteetti
+- miten ratkaista nälkiintyminen? kaksi kopiota tietorakenteesta, aktiivinen jota käytetään vuoronnuksessa ja seuraava
+- kaikille säikeille annetaan maksimi arvo kauanko saavat olla aktiivisessa kopiossa
+- jos tulee maksimi aika, niin siirretään seuraavaan (expired) joukkoon, näin aktiivi joukko tyhjenee pikkuhiljaa
+- kun tyhjä niin vaihdetaan osoittimet, ja expired joukosta tulee aktiivinen, näin perusalgoritmi on yksinkertainen ja varmistetaan reiluus että kaikki säikeet ajetaan jossain kohtaa
+- erikoistapaukset interaktiiviset ohjelmat, tehty lisämuutoksia (interaktiiviset laitetaan kuitenkin aktiivisen puolelle)
+- cfs, käyttää tasapainotettua puuta, puu ei ole kovin syvä, max 10 ready tilassa olevaa prosessia, tasapainotus ei vie paljon aikaa
+- vähiten saaneet suoritusta ovat puun vasemmalla puolella
+- lisäongelmia: kannattaa suosia säikeiden suorittamista joilla on yhteistä muistia (saman prosessin sisällä)
+- ei kannata vaihtaa prosessori(corelta) toisella jatkuvasti
+- NUMA, ei yhteinen muisti kaikille prosessoreille vaan omat, ja yhteys cpu:iden välillä
+
+Luento 9
+========
+- normi kj:t yleensä ei reaaliaikaisia
+- alla eri kriteereitä reaaliaikaisuudelle
+- reaaliaika: hard - missing deadline is total system failure
+- firm - infrequent deadline misses are tolerable but may degrade quality of service, usefulness of result is zero after deadline
+- soft - usefulness of result degrades after its deadline thereby degrading the system's quality of service
+- aiemmissa vuoronnusalgoritmeissa ei ollut takeita milloin asiat saatiin tehtyä
+- realiaikaisissa kj:ssa: kun jotain tapahtuu (esim. joku signaali mihin pitää reagoida) niin siellä on määritelty deadline piste tai ikkuna mihin pitää osua ajallisesti
+- kj:ssä ei saa olla mitään osaa joka tuottaa epämääräistä viivettä
+- voi olla että on fiksattu määrä säikeitä bootaessa, sillä tätä on helpompi taata reaaliaikaisuus
+- pitää määritellä tehtävälle (task) ajallisia reunaehtoja: koska tulee ajoon, kuinka kauan on kerralla ajossa, koska on valmistuttava
+- realtime task: Ci = worst-case execution time, Di =  task relative deadline, Ti = task period
+- yleensä tehty niin että taskin loppuaika on aina periodin lopussa
+- rate-monotic: deadline ja periodi on sama luku, staattinen irroittava vuoronnus, ei resurssien jakoa, deadline määrittelee prioriteetin (etukäteen) -> lyhyin deadline on korkein prioriteetti, oletataan: säikeen vaihto operaatiot ovat ilmaisia
+- ei resurssien jakoa: ei oteta huomioon esim. lukkoja, jotka hidastaisivat huomattavasti, kun mutexien avulla pitäisi odottaa koska ne vaikuttavat ajoituksiin -> ongelmat siirretään ohjelmoijien puolelle
+- utilization arvo, U = summa Ci/Ti, todistettu arvo n taskin monotonic vuoronnukselle on U < n(2^(1/n)-1)
+- on kuitenkin harmaa alue jolla voi toimia
+- earliest deadline first: irroittava vuoronnus dynaamisella prioriteetilla
+- kun tapahtuu muutos, (task ajoon tai lopettaa), etsitään task, jolla on vähiten aikaa deadlineen ja siirretään se suoritukseen
+- EDF parempi kuin RM, mutta prioritettijonon toteutuksen hinta ei ole nolla, jos yksikin deadline menee pieleen, vaikutukset voivat olla pahoja, kriittiset alueet (priority inversion) voivat sotkea pahasti
+- huonoin asia mitä voi tapahtua reaaliaikaisissa järjestelmissä: domino effect: jos 1. taskin deadline menee pieleen niin sen seurauksena kaikki muut taskit myös missaavat deadlinensa
+- siksi jätetään järjestelmässä varaa ettei ihan täyteen taskeja
+- linux RT, parempia tuloksia reaaliaikaisuudelle
+
+Luento 10
+=========
+- miksi virtuaalimuisti?
+- ennen oli overlay järjestelmä: ohjelmoija ottaa omaan käsiinsä muistinhallinnan, jos data ei mahdu keskusmuistiin, niin kirjoitetaan levylle ei niin useasti käytetyt funktiot ja ladataan muistiin tarvittaessa
+- tämä hidasti järjestelmää (levyn odotus) ja monimutkaisti ohjelmointia
+- piti tehdä algoritmi joka analysoi koodia (riipuvuusgraafeja), mitkä rutiinit piti olla kullakin hetkellä keskusmuistilla
+- väite: 1960-luvulla ohjelmoijan 25-40% ajasta meni kerrostukseen
+- nykyään näistä asioista ei tarvitse huolehtia
+- virtuaalimuisti: abstrakointi menetelmä, annetaan ohjelmien luulla että on paljon muistia
+- kj:n pitää yllä illuusiota
+- virtuaaliosoitteet: base rekisterin muistiavaruus voisi olla suurempi kuin osoiteavaruus
+- MMU muuttaa CPU:lta tulevia (virtuaalisia)muistiosoitteita fyysisiksi osoitteiksi, tämä tehdään raudalla (ellei ole emulaattori)
+- todellinen keskusmuisti voi olla isompi kuin esim 16-bitin osoitteet
+- yksi ohjelma ei voi olla enemmän kuin 16 bittisessä osoiteavaruudessa, mutta kj:llä on enemmän tilaa käytettävissä
+- yksittäisen ohjelman kannalta virtuaalimuistista ei mitään hyötyä, mutta kokonaisjärjestelmän kannalta enemmän joustavuutta ja voi pitää enemmän ohjelmia muistissa
+- kj ei pysty ylittämään 16 bitin rajaa, mutta se tarvitsee keinoja pystyä käsitellä koko muistiavaruutta
+- Base-Limit -ongelma: on oletus että koko ohjelma on peräkkäisissä muistialueissa: ulkoinen pirstoutuminen (external fragmentation)
+- kun ohjelma poistuu ja p1:n ja p3:n välissä on vähemmän tilaa kuin uusi ohjelma tarvisi, eli vapaan muistialueen keskellä on jo ohjelma, vaikka olisi vapaata aluetta, muttei yhtenäistä muistialuetta
+- olisi mahdollista siirtää ohjelma uudelleen muistijärjestelyllä, mutta tämä olisi varsin hidasta ja softat jämähtäisivät
+- ratkaistaan jakamalla muisti vakiomittaisiin sivuihin (page)
+- sivutus: käsittelyyn vakiomittaiset sivut (esim 512, 1024, 4096 tavua)
+- keskumuisti jaetaan sivutiloihin (PAGE FRAME)
+- laitteisto hoitamaan kuvaus sivusta sivutilaan
+- häviää vaatimus, että tarvii olla muistissa yhtenäinen muistialue
+- virtuaalipuolella säilyy illuusio, että kaikki muisti on yhtenäisessä muistiavaruudessa, mutta oikeasti voivat olla ihan eri paikoissa fyysisessä muistissa
+- MMUssa nyt pitää olla rekisteripankki
+- muistiosoite jaetaan kahteen osaan. vähemmän merkitsevät bitit kertovat missä kohdassa ollaan muistisivun (esim. 4kt) sisällä
+- enemmän merkitsevät luettelevat sitten itse muistisivuja
+- MMU käsittelee enemmän merkitseviä bittejä
+- jos muunnetaan MMU:ssa niin siellä käsitellään vain enemmän merkitseviä bittejä ja alemmat bitit (sivun sisällä olevat offest indeksiin bitit) annetaan mennä vaan läpi
+- lisävaatimuksia, rekisteripankki on osa prosessia (pitää vaihtaa kun prosessi vaihtuu) niitä varten tarvitaan etuoikeutetut käskyt
+- ohjelma ei mitenkään voi mennä toisen prosessin osoitteeseen, ei mitään mekanismia, jos kj toimii oikein siis
+- kj:n täytyy pitää kirjaa muistinkäytöstä (myös vapaat alueet)
+- ongelma: systeemi ei skaalaudu jos liian iso rekisteripankki (merkitseviä bittejä liikaa), esim. kontekstinvaihto (suuri määrä vaihdettavaa säikeen vaihdossa)
+- kuitenkin halutaan jakaa 4 kt palasiin
+- ratkaisu: laitetaan keskusmuistiin sivutaulu
+- MMU:lle tarvitaan yksi rekisteri osoittamaan sivutauluun (CR3 intelissä)
+- kj valitsee missä sivutaulu sijaitsee
+- sivutaulu formaatti usein raudan perusteella määritelty tarkasti
+- kun prosessi vaihtuu, niin myös sivutaulu rekisteri vaihtuu
+- sivut käytännössä: 32-bittisessä osoiteavaruudessa jokaisella prosessilla on miljoona sivua
+- 64-bittisellä on 16 Exatavua muistia (potentiaalisesti)
+- näin paljon ei oikeasti tarvita, hiomista: lisätään useampia tasoja, enemmän merkitsevät bitit jaetaan kahteen palaseen, 1. osa kertoo missä on toinen sivutaulu ja 2. osa kertoo missä sivu on todellisessa muistissa
+- 1. taulu on karkea jako, 2. taulu sivun tarkkuudella 
+- tämä ei kuitenkaan vaikuta muistinkulutukseen (lisättiin vaan epäsuoruutta)
+- kj varaa vain minimimäärän sivuja, jolla saadaan käyntiin softa
+- voi merkata että 1. tason sivutaulun kaikki paikat ei ole käytössä, mikä säästää tilaa
+- siis ei tarvitse varata muistia kaikille taulun sivuille, ainoastaan niissä paikoista mille on annettu lupa käyttää
+- jos tarvitaan ajon aikana lisää muistia niin se on palvelupyyntö "halutaan lisää muistia", kj katsoo jos löytyy ja jos kyllä niin kj päivittää sivutaulun ja antaa oikeudet käyttää niitä
+- ohjelma ei voi itse päättää "rupean käyttämään uutta aluetta", tulee muistinkäyttövirhe
+- nyt kj siis on kiinnostunut siitä mitä ohjelma sisäisesti tekee, kun on uusi systeemi missä sivun tarkkuudella tarkastellaan muistia
+- eli nyt ohjelman osoiteavaruuden välissä muistialueessa voi olla mustia aukkoja, jos sinne yritetään osoittaa niin tulee muistiosoitusvirhe
+- C:ssä voi poistaa osoittimen ja antaa sille arvon 0. tällöin vika tulee nopeammin esille jos myöhemmin vahingossa viitataan siihen
+
+Luento 11
+=========
+- on kahdenlaisia dataa, alustettua dataa ja alustamatonta dataa
+- alustettua: vakiota esim. merkkijono ja sitten alustamatonta: ilman alkuarvoja integer taulukko
+- alustamatonta dataa ei varata .exe:ssä, vasta kun ohjelma ladataan muistiin
+- ohjelma alustetaan minimisivuilla kun se lähtee käyntiin muistin säästämiseen
+- yleensä ohjelmat eivät vapauta muistia, mutta se on mahdollista
+- kj:n etuoikeutettu tila ajetaan myös MMU:n läpi, koska helpompaa eikä tarvitse tehdä ylimääräistä langoitusta
+- täytyy olla sivutaulut etuoikeutettua tilaa kj:ta varten
+- tietoturvan takia kj:n sivudataa ei pidetä sivutaulussa tietoturvan takia
+- identity-mappaus: mapataan yksi yhteen fyysinen muisti ja kernelin sivutaulu, helpottaa
+- nykyään jopa 5 tasoa, ei ihan 64-bittiä käytössä mutta silti
+- nyt kun sivutaulut ovat muistissa, niin haku keskusmuistista on todella hidasta kun on niin monta muistiviittausta (esim. 2 tasoisessa tarvitaan 3 viittausta)
+- lokaalisuus: pelastaa tilanteen, ohjelmat tekevät muisitiviittauksia tyypillisesti samassa paikassa
+- jos luo 100 uutta new oliolla, niin ne yritetään sijoittaa peräkkäisiin muistipaikkoihin, silmukat pyörivät muutamalla muistisivulla
+- välimuisti rakennettu niin että muistisivuihin viittaminen joihin on viitattu äskettäin on nopeammin
+- yllättävän vaikeaa koodata softaa joka rikkoo tätä lokaalisuus-systeemiä, pitäisi käsin koodata assemblerilla
+- lokaalisuus ajallisesti tai paikallisesti
+- python tulkit myös käyttäytyvät tällä lailla
+- TLB = tranlation lookaside buffer (osoitteenmuunnospuskuri), MMU:n viereen pistetään TLB niminen välimuisti joka on potentiaalinen oikoreitti MMU:n ohitse
+- aina kun tulee virtuaaliosoite niin katsotaan löytyykö se välimuistista, jos löytyy niin mennään suoraan muistiin
+- muutama kappale suoria mappauksia TLB:ssä, jonne pistetään talteen äskettäin menneet muisitosoitteet
+- TLB on todella nopea, ei tehdä mitään laskuja vaan kopiodaan suoraan
+- MMU:n kautta pitää kuitenkin mennä silloin tällöin kun tulee uusi osoite joka ei ole TLB:ssä
+- TLB hit, jo pieni TLB (8-32) antaa yli 98% osumaprosentin (HIT RATIO)
+- nykyään oma erillinen TLB koodille ja datalle
+- TLB ongelmat: turvallisuus, prosessin vaihtuessa ei saa näkyä TLB:n vanhoja sivuja
+- ratkaisu: TLB flush -konekäsky nollaa kaikki tiedot
+- TLB invalidate voi poistaa määrättyjä sivuja
+- ASID (Address Space IDentifier) rekisteri TLB:ssä, jolla KJ voi merkitä mikä prosessi on suorituksessa, jokaisella TLB rivillä tunniste kenen prosessi -> eri tarvitse flushata
+- nykyään jopa kahden tason TLB:tä
+
+Luento 12
+=========
+- TLB ja cache: CPU:n ja muistin välissä cache L1, L2 tai jopa L3
+- välimuisti haku nopeampi kuin muistista
+- ohjelmoijan ei tarvitse välittää välimuistista
+- cache toimii fyysisillä osoitteilla, jos TLB ennen cachea
+- cache voi olla ennen tai jälkeen TLB:n, jos ennen TLB:tä niin välimuisti voidaan heti hakea, jotta ei tarvitse tehdä edes TLB muunnosta jos se löytyy heti cachesta
+- jos virtual cache on ennen TLB:tä niin sieltä löytyy myös data suoraan
+- lähetetään tieto cachelle ja TLB:lle samaan aikaan (nopeusoptimointi)
+- virtual cache sisältää prosessin vaihdossa vanhoja tietoja joten se pitää myös pystyä tyhjentämään
+- muuten prosessi lukisi väärän prosessin muistia
+- vuoronnus suosii saman prosessin säikeitä, jottei välimuistia tarvisi tyhjentää koko ajan
+- on mahdollista että kaksi prosessia käyttävät samaa muistisivua cache mappausten avulla
+- hugepages: isoja yhtenäisiä muistialueita (sivuja) jotka ovat "oikoreittejä" sivutuksessa, esim. tietokannoille
+- näitä voi erikseen pyytää linuxilla, ei 4kB kuin normaalisti vaan voi olla 2MB
+- käänteinen sivutaulu: laitteistolla pidetään kirjaa fyysisistä sivuista eli keskusmuistissa olevista sivuista, prosessin sivut KJ:n tietorakenteissa
+- käänteisessä sivutaulussa täytyy olla informaatio minkä prosessin sivu on kyseessä
+- kun cpu:lta tulee muistiosoite, niin pitää suorittaa haku käänteisessä sivutaulussa
+- houkutteleva koska tietorakenne pysyy jatkuvasti samana, sillä prosessin id:t siellä mukana (ei tarvitse vaihtaa sivutaulua jos prosessi muuttuu)
+- ei kuitenkaan käytössä, hajautustaulun toteuttaminen raudalla ei ole helppoa, liian monimutkaista
+- sivutus: prosessi ei tarvitse kaikkia sivuja jatkuvasti (lokaalisuus), kourallinen sivuja pistetään keskumuistiin, loput voidaan pitää kovalevyllä
+- lisätieto sivutauluun, onko sivu keskusmuistissa vai levyllä
+- MMU keskeytys jos sivua ei löydy sivutiloista läsnäolokeskeytys (PAGE FAULT), rauta tekee tarkistuksen, mutta kj koodi hoitaa homman
+- tästä ei ole hyötyä yhdelle prosessille, mutta optimoi muistinkäyttöä koko ohjelman kannalta -> enemmän tilaa keskusmuistissa
+- myös auttaa suurten ohjelmien ajaessa, ladataan vain pieni main muistisivut ja loput tarvittaessa
+- voi pyytää että ei tehdä sivuutusta levylle vaan pidetään keskusmuistissa, mutta kj sitten päättää itse
+- poistoalgoritmi vapauttaa sivuja keskusmuistista, taustalla seurataan mitä muistisivuja käytetään ja mahdollisesti heitetään pois käyttämättömiä
+- parasta algoritmia ei ole, luotetaan lokaalisuus periaatteeseen
+- jokaisessa sivussa on tietoja, sivubitit
+- sivubitit: läsnä (keskusmuistissa), muutos (modifioitu, eli jos sivulle kirjoitetaan jotain niin se pistetään heti päälle, jos tarvitsee synkoronoidia muistin ja levyn välillä, ei tarvitse turhaan päivittää levylle mitään jos muutoksia ei ole), viite (reference, voidaan karkeasti tehdä lokaalisuus tutkimusta, on tehty muistiviittauksia siihen sivuun), suojaus (RO/RW,Execute)
+- sivubitit ovat laitteiston määräämiä
+- muutokset myös TLB:ssä! (suojaus yksi näistä)
+
+Luento 13
+=========
+- läsnäolokeskeytys (mitä tapahtuu jos tulee sellainen): 1. keskeytyskäsittelijä 2. onko sivu olemassa 3. valitaan vapaa sivutila keskusmuistista 4. käynnistetään lataus 5. vuoronnetaan toinen säie 6. latauksen valmistettua jatketeaan (käsky käynnistetään uudelleen)
+- poistolagoritmit: optimaalinen "uhri" (poistettava sivu) on se jonka seuraavaan käyttöhetekeen on pisin aika
+- poistoalgoritmeja ei ajeta jatkuvasti, vaan kun tulee esim. läsnäolokeskeytys ja tarvitaan lisää tilaa muistissa
+- FIFO: kauimmin muistissa ollut poistetaan (ei huomioi lokaalisuutta), ei huomioi historiatietoa, ainoastaan kutsutaan kun tarvitaan (läsnäolokeskeytys)
+- LRU (least recently used): uhri on sivun johon on kohdistuneesta viittauksesta on pisin aika, tarkka toteutus hankala
+- on palvelupyyntö (memory advice), joka ohjelma antaa vinkin muistista jota ei tarvita
+- RANDOM: poistettava valittu sivu on täysin satunnainen
+- CLOCK (SECOND CHANCE) pidetään kirjanmerkkiä sivulistaan ja merkataan että näyttää siltä että niitä ei tarvita ja annetaan second chance ja myöhemmin tehdään uusi skannausjakso ja jos silloin taas tulee merkki niin heitetään pois
+- poistoalgoritmi kohdistuu käyttöjoukkoon
+- versioita: kiinteä käyttöjoukko (FIXED PARTITION), ohjelman käytössä sama määrä sivuja koko suoritusajan. vaihteleva joukko (VARIABLE PARTITION) poistoalgoritmi voi vaihdella käyttöjoukon kokoa dynaamisesti
+- postoalgoritmin kohde voi vaihdella: paikallinen, tutkii vain prosessesin omia sivuja. globaali, tutkitaan kaikkia muistissa olevia sivuja samalla
+- DWS: (Denning working set) katsoo historiaa ja poistaa niitä mitä ei olla käytetty esim. 4 viime kerran aikana
+- DWS ei auta yhtä prosessia vaan parantaa systeemia yleisesti, optimoidaan muistia koko järjstelmän kannalta, muut prosessit voivat käyttää vapaata muistia
+- resident sets: paljonko sivuja on sillä hetkellä käyttöjoukossa (resident), yleensä niitä on vähemmän kuin kokonaismäärä (total pages)
+- optimointipeli: paljonko annetaan muistisivuja jokaiselle prosessille? voidaan katsoa metriikkoja: käyttöjoukon elinikä (kuinka usein täytyy koskea käyttöjoukkoon läsnäolokeskeytysten seurauksena/kahden läsnäolokeskeytyksen väli)
+- ohjelman suoritusaika: normaalisuoritus + siirrännän odotus + jonotusaika (READY) + läsnäolokeskeytysten käsittely
+- muisti-integraali: ohjelman kokonaissuroitusajan ja keskimääräisen muistinvarauksen tulo, pyritään minimoimaan muisti-integraalin kokoa
+- sivumäärä (paljonko annetaan prosessille sivuja) vs elinikä graph: optimi paikka on polvipiste, jossa tarpeeksi sivuja, muttei turhan paljon
+- liian vähän sivuja: tulee koko ajan läsnäolokeskeytyksiä, liian paljon sivuja: ei tuo lisähyötyä, otetaan vaan muilta prosesseilta muistisivuja pois
+- saman voi myös esittää sivumäärä vs. suoritusaika graph
+- jos on liikaa muistia koko järjestelmässä (annetaan liikaa muistia kaikille prosesseille, niin jossain kohdassa tulee tilanne että sivupeliin menee liian paljon aikaa ja koko järjestelmä ruuhkautuu
+- esim. jos tulee uusi iso prosessi ja kaikille pitää ajaa poistoalgoritmi
+- järjestelmä toimii, se ei siis kaadu, mutta vain hidastuu niin ettei siitä tulee enää käyttökelpoista
+- esim. firefox ei kannata ottaa liikaa muistia, sillä se ruuhkauttaa koko systeemin mukaanlukien itse firefox prosessi hidastuu
+
+Luento 14
+=========
+- kj:n ei kannata pitää muistisivuja tyhjänä, kj käyttää vapaata muistia puskureina (hyötykäyttöä)
+- poistoalgoritmi toimii jatkuvasti ennakoivasti pikkuhiljaa
+- muistisivun tilat: ei olemassa, läsnä muutettu/ei muutosta, vapaa muutettu/ei muutosta (sivu on edelleen keskusmuistissa, kirjanpidollinen merkintä), levyllä (hidasta jos levyltä tarvitsee muuttaa läsnä tilaan muistiin)
+- vapaa tarkoittaa kirjanpidollista informaatiota, että niitä voi tarvittaessa muuttaa
+- muutettu tarkoittaa että levyllä pitää päivittää sivua
+- linux minor ja major: minor page fault = sivu voidaan palauttaa takaisin muistipuskurista, major page fault = sivua ei ole keskusmuistissa ja pitää hakea sekundääriasemalta
+- muistisivut nollataan ennen uudelle prosessille antamista, koodisivut eivät mene lainkaan swap-leyvlle (on jo .exe tiedosto missä se sijaitsee), jaetut sivut mutkistavat rakennetta
+- jos muuttaa koodia ajon aikana, niin se voi kaataa systeemin (ratkaisu: windows lukitsee tiedoston, linux taas linkittää uuteen binääriin)
+- tuhoamalla tideosto a.out rm-komennolla ei tuhoa tiedostoa jos se on ajossa, vasta kun ohjelma lopettaa ajon
+- koodisivut voidaan jakaa, linkittämällä prosessit yhteen koodin keskusmuistisivuun
+- virtuaalimuisti käytännössä: muistihallinassa rauta pystyy asettamaan rajoituksia. Rauta voi asettaa alueita mitä ei voi käyttää (DMA siirrot, näyttökortin muisti) -> kj:n täytyy mukautua rautaan
+- voi olla jaettua koodia, jaetut kirjastot keskusmuistissa
+- memory mapped files: minkä tahansa tiedoston sisältö voidaan mapata prosessin osoiteavaruuteen, sivut ei mapata muistiin vaan tiedostolle, jos muokataan tiedostoja niin muutokset näkyvät myös levylle (ei välttämättä päivity heti, mutta voi kutsua flush komentoa tai sulkea tiedosto)
+- jaetut kirjastot laajennusta edellisestä (exe jako), .dll kirjastot, kj pitää huolen että kun ohjelma käynnistetään niin myös kirjasto ladataan muistiin
+- hyödyt: tilansäästö, kirjastoa voi päivittää ilman että alkuperäistä koodia tarvitsee päivittää
+- ongelma: kirjastokoodit eivät asetu tasaisesti virtuaaliosoite avaruudessa, voi käydä niin että koodi osuu eri paikkoihin prosessin virtuaaliavaruudessa
+- jokainen dynaaminen kirjasto pitää kääntää PIC moodissa (position independent code), ei tuota absoluuttisia osoitteita, vaan tuottaa suhteellisia viitteitä, eli offset (esim. JUMP +500)
+- on kuitenkin muutama fixattu alkio, mistä kirjasto alkaa, mutta suurin osa PIC koodia
+
+Luento 15
+=========
+- demand paging idea: kun prosessista pyydetään uutta muistia, niin se menee kj pyynnöksi. muistista nyt varataan tilaa
+- demand paging (tarvittaessa sivutus) tarkoittaa että aluksi muistin varauksen kannalta ei tehdä yhtään mitään
+- vaan prosessin tietoihin kj:n taulussa tehdään kirjanpito informaatio että prosessille on annettu esim. 1 Mt
+- vasta sitten kun prosessi käyttää aluetta niin sitten tehdään muistinvaraus, eli siis valehdellaan prosessille "ok tossa alueessa on muistia"
+- jos prosessi teki turhan pyynnön niin säästettiin tilaa (ei tyypillistä)
+- sitä mukaa kun ohjelma käyttää sivuja niin sitten varataan pikkuhiljaa
+- kaksi syytä: 1. ei tarvitse tehdä massiivista sivujen varausta kerralla (levitetään muistinvarauskuormaa) 2. koitetaan viimeiseen asti välttää muistinvarausta
+- voi tapahtua niin että kun demand paging lähtee käyntiin, kun sivu on luvattu muttei varattu, niin on mahdollista että ei tässä tilanteessa löydy tilaa (overbooking tilanne hankala) 
+- kj:ssa ei ole järjestelmää että jälkikäteen tulisi poikkeus (muisti lopussa)
+- on kaksi suhtautumistapaa: kj voi sallia overbookingia (jos loppuu muisti niin väkisin lopetetaan joku prosessi) tai käyttää laskuria joka laskee montako vapaata sivua olemassa
+- oli optimointi vuoteen 2018: pidetään kj:n koodi sivut aina näkyvillä eikä sivuteta levylle
+- kernelikoodi jatkuvasti keskusmuistissa, yksi yhteen mappaus
+- read only tarkistusta ei tehty supervisor tilassa, oli valmiiksi mapattuna, ei tarvitse tehdä muutoksia mmu:ssa tai sivutauluissa
+- tämä oli nopeusoptimointi
+- meltdown 2018: saatiin kerneli alueelta vuodettua user puolelle käyttämällä branch prediction ja virtuaalimuistia
+- android: ei tehdä sivutusta, liian kallista flashmuistilla. jos tarvitaan keskusmuistia, niin valitaan 1 (sovellus) prosessi ja heitetään se pois
+- ohjelmoijan tarvitsee itse taltioida android ohjelman tila ennen sitä
+- fork() systeemikutstu luo uuden prosessin: kopioi prosessin kahdeksi kopioksi
+- copy-on-write optimointi: kun tehdään fork, uuden prosessin sivut laitetaan osoittamaan samoihin paikkoihin kun alkuperäinen, poistetaan kirjoittaminen
+- fork tehdään nopeasti, niin kauan kun prosessit lukevat dataa niin kaikki toimii nopeasti
+- jos tulee kirjoitus, niin silloin vasta erotetaan kaksi ohjelmaa (copy on write)
+- raskas kopiointi tehdään vasta kuin ihan pakko
+- komentotulkki pystyy muokkaamaan kopioitua prosessia
+- toinen hyöty putkitus
+
+Luento 16
+=========
+- ohjelman muisti, start address: 64 bittinen virtuaaliosoite, erilaisia alueita: .text ajettavaa koodia, .rodata ohjelman tarvitsevia data-alueita
+-.interpreter on ensimmäinen koodipätkä mikä lähtee käyntiin (lataa kirjastot), kj:n puolelta homma on nyt valmis
+- dynaamiset kirjastot myös muistiavaruudessa
+- kj tietää onko muistiviittaus sinisellä(siellä on dataa)/valkoisella(tyhjiä) alueella. jos valkoisella -> segmentation fault, muuten pitää selvittää miksi läsnäolokeskeytys
+- jokaisella prosessilla mmstruct (memory manage struct) joka kertoo mitkä muistiavaruuden alueet ovat laillisia ja käyttämättömiä
+- pmap komennolla saadaan prosessin muistitietoja, r-x: ajettava koodi, r: pelkkää luettavaaa data (string), rw: muuttujat
+- sama koskee kirjastoja, monta erilaista muistisivua
+- jaetut kirjastot, mitä jos niissä on puskureita, joten rw sivut eivät ole jaettuja vaan prosessikohtaisia
+- [anon] alue on dynaamista muistinvarausta
+- alueita missä ei ole mitään oikeuksia, liitty tietoturvaan (kanarianlintualueita), jos pino osuu tälläiselle alueelle niin se tietää että pino on täynnä tai joku yritti päästä alueelle (tunkeutuja tietoturva)
+- muistinvaraus: ennen vanhaan oli break raja, jota kasvatettiin jos tarvittiin lisää muistia
+- malloc toimii tavuilla ja hoitaa muistivarauksen (jos tapahtuu muistinvapautuksia se pitää kirjaa)
+- strace tulostaa ohjelman kaikki systeemikutsut
+- tietoturva: f00f bugi, DEP (Data Execution Prevention) muistisivu ei saa olla samaan aikaan kirjoitettava ja suoritettava (se on heti hyökkäysvektori, kirjoitetaan haittakoodia ja yritetään heti suorittaa se), ASLR (address space layout randomization), ei pidä prosessin osia osoiteavaruudessa vakiopaikoissa, joihin hyökkäyskoodin olisi helppo osoittaa
+
+Luento 17
+=========
+- tiedostojärjestelmät: jos halutaan tehdä tiedostooperaatioita niin kutsutaan systeemikutsuilla kj:lta, kirjastosta (esim. C-kirjasto)
+- voisi olla erilainen rajapinta, esim. tiedosto-olio
+- kerrosarkkitehtuuri: VFS, tiedostojärjestelmä, cache (general block layer), driver, disk
+- generic block layer: levylle ei laiteta tavu kerrallaan vaan lohko kerrallaan, sivutetaan tietoja (jätetään data kellumaan)
+- sen päällä on tiedostojärjestelmä
+- VFS (virtual file system) määrittelee systeemikutsu rajapinnan
+- "everything is a file" ideologia linuxissa
+- ohjelmien ei tarvitse tietää yksityiskohtia, vaan VFS rajapinta riittää
+- prosessi voi käsitellä tiedostoja olivat ne sitten paikallisia tai verkkolevyllä, VFS:n ansiosta
+- linuxissa on laitettu asioita VFS:n taakse koska syynä suojaukset, monen käyttäjän järjestelmissä
+- monella prosessilla voi olla monta eri polkua eri tiedostojärj. läpi
+- nykyään: loogisia osoitteita kovalevyllä, taulukko lohkoja, kovalevy on musta laatikko
+- eli kaikki kj:n vastuut siiretty kovalevylle
+- laiteajuri: keskeytysohjattu koodi, joka osaa jutella massamuistilaitteeen kanssa, nykyään lähes aina DMA (direct memory access)
+- DMA: suora yhteys kovalevyn ja muistin välillä, kun kaikki valmista niin sitten lähetään kutsu prosessorille 
+- voidaan muuttaa pyyntöjen järjestystä, jos vaikka operaatiot 1 ja 3 ovat samalla sylinterillä
+- I/O vuorontaja: yritetään maksimoida IO tehokkuus, lukupään siirto hitain operaatio, pyyntöjä voidaan yhdistää, järjestää ja priorisoida, linux: ionice
+- I/O algoritmeja: FIFO = ei algoritmia, SSTF (shortest seek time first) = lukupää lähin, voi johtaa nälkiintymiseen, SCAN (elevator) = ylös ja alas päästä päähän, reiluus sisäänrakennettu, C-SCAN, palataan takaisin palvelelematta
+- alla listattu I/O vuorontajia
+- linux deadline: elevator järjestetty jono, josta palvellaan, deadline ajat (jos luku tai kirjoitus ollut jonossa niin kauan, niin se ohittaa muut operaatiot), esim 500 ms read ja 5s write
+- linux CFQ (completely fair queueing): prosessikohtaiset jonot, jokaiselle jonolle aikaviipale, voi jopa odottaa jos prosessi ei heti käytä aikaviipalettaan
+- NOOP (no operation queue), kun jonotusjärjestyksellä ei ole väliä tai siihen koskeminen jopa hidastaa, kytketään se pois päältä, SSD, ramdisk (keskusmuistia)
+- NCQ (native command queueing), ohjainpiiri uudelleenjärjestelee operaatiot, onko tämä tulevaisuus?
+
+Luento 18
+=========
+- tiedosto ei ole pelkkää dataa, myös metadataa mukana esim. nimi, koko, luontiajat, suojaukset jne.
+- tiedostojärjestelmä on pysyväistaltionti
+- pitää sulkea järjestelmä hallitusti jottei mitään häviä
+- ylemmän kerroksen ei tarvitse tietää alempien kerrosten yksityiskohdista
+- levyjä voi jakaa partitioihin, myös dual boot (levyllä useampia kj:ta)
+- tiedostojärjestelmä: 1. joukko tietorakenteita tiedon ja metadatan tallentamiseen 2. algoritmit tilan allokointiin ja vapauttamiseen
+- TJ hallinnoi kaikkea sille annettua tilaa, esim. vapaiden lista tai bittikartta
+- UFS (Unix Filesystem) jakaa koko tilan joka käytössä paloihin
+- super block: sisältää informaatiota koko levystä
+- block bitmap & indoe bitmap: yksi bitti jokaista lohkoa varten, kertovat onko lohko käytössä vai vapaa
+- varsinainen tieto lohkossa jaetaan: inode alue ja datalohko alue
+- inode on metainformaatiota, jos tiedosto koostuu 7 lohkosta, niin niiden järjestys C-struct missä monta kenttää
+- superblockin tietoja: signature (koodi järjestlmä tyypistä, esim. ext4), number_of_inodes/datablock, block_size (lohko koko), first_inode, first_free_inode, volume_name, last_mount_point
+- status bitti: kertoo miten tiedostojärjestelmä ajettiin alas, muutetaan nollaksi aivan viimeisenä
+- inoden tietoja: file_type (ei liity .mp3/.txt:iin, vaan voi tarkoittaa dataa, linkki, hakemistoa tai socketia), UNIX_access-rights, ACL_pointer (laajennettu oikeus), file_length, time of last access/change/inode_change, hard_link_counter, number_of_datablocks
+- jos 10 tai vähemmän data blokkeja niin se säilytetään itse inodessa
+- epäsuoruudet: taulukko 11 pelkkiä osoitteita muihin data lohkoihin, niin monta tasoa kun tarvitaan
+- rinnakkaisuus: tiedostojärjestelmä ei saa mennä rikki
+- ratkaisu: windows = tiedoston avaus lukitsee tiedoston, linux ei oletuksena lukitusta datalle (ohjelmoijan vastuulla)
+- tiedoston luonti: varataan tilaa heti useampi lohko (esim. 8), uutta lohkoa etsitään aina ensin läheltä viimeisintä (lokaalisuus hakuvarren ohjelmoinninssa)
+- hakemisto: sisäisesti tavallinen tiedosto, jonka sisältö on tiedostojen nimiä
+- file pointer (FPTR) inodessa: missä kohtaa datankäsittely menee
+- prosessia ei päästetä kernelin sisäiseen taulukkoon
+
+Luento 19
+=========
+- jos halutaan avata tiedostopolku, niin ensin pitää selvittää onko se edes olemassa
+- etsitään inodesta home ja siitä seuraava nimihaku, inode ketju
+- paljon levy operaatioita, huonoimmassa tapauksessa kaikki inodet eri paikoista levyltä
+- puskurit auttavat, esim. home kansio on varmasti muistipuskurissa
+- open tarkoittaa että sekvenssi tehdään vain kerran, annetaan tunniste jolla tiedetään oikoreitti oikeeseen inodeen
+- myös oikeudet tarkistetaan joka inoden kohdalla, vain kerran alussa
+- näin VFS näkee maailman, voi tapahtua niin että kovalevyt vaihtuvat hakupolun aikana
+- erotin merkki erottaa onko seuraava osa polku vai tiedosto
+- jos hakemisto niin kutsutaan uudestaan (rekursio)
+- jos polku vaillinainen niin katsotaan prosessin current directory ja lisätään se eteen
+- optimointeja: muistissa aina superblock (juurihakemisto), block groups: kokonaisuus jossa dataa ja inodeja, yritetään pitää lähekkäin yhteen liittyvät asiat kovalevyllä
+- seek()-operaation seurauksena voidaan jättää tietorakenteisin nollaa: seek() menee oikeaan kohtaan kun ohjelmoija pyytää ja kirjoittaa sinne, voi tehdä aukon, mutta silti sanoa että sisältää esim. 1 gb, mutta palauttaa nollaa kun yritetään lukea keskeltä, näin optimoidaan eli minimoidaan tilaa (nollat ei ole tallenettu)
+- eli vfs valehtelee
+- tail fragment. (fragmentointi = kun data on hajallaan levyllä) viimeinen datalohko jää yleensä vajaaksi, potentiaalista tilaa joka menee hukkaan, tail fragments = käytetään hukkatilaa toisen tiedoston säilytyspaikkana, vaatii lisää algoritmeja
+- muita optimointeja: samanlaisten lohkojen yhdistäminen, tiedostonimet hajautustaulussa, varataan isompia alueita yhdellä epäsuoruusrakenteella
+- lisää optimointeja: swap partitiolla prioriteetteja (SSD), ssd-levyjen hidasta lohkon nollausta auttaa TRIM-komento, eli etukäteen vapautetaan muistipaikka
+- block device, erikoistiedosto: suoraa levykäsittelyä jollain "oikotiellä"
+- levy pitää alustaa ennen kuin se otetaan käyttöön
+- tehdään ylläpito-komento, joka pystyy alustamaan levyn
+- /dev/sda (on block device tyyppi) ohjaa vfs:n kautta suoraan levy ajurille
+- FSCK (filesystem check), jokaiselle tiedostojärjestelmälle oma, tarkistaa että tiedostorakenteet levyllä ovat eheät
+- erillinen ylläpito komento, ei siis pidetä kernelissä
+- lähtee superblockista käymään lävitse, vertailee jokaista datalohkoa, että jokainen datalohko löytyy jostain
+- superblock on kriittinen, jos se on rikki niin mikään ei toimi, siksi siitä pidetään kopiota
+- yksi mahdollinen vika linkki inoden ja linkin välillä häviää, eli ilman nimeä oleva ehjä data
+- lost+found kansioon pistetään semmoiset, tiedoston nimeksi inoden numero
+
+Luento 20
+=========
+- prosessi/vfs/tiedostojärjestelmä/general block layer/device driver
+- luvataan että tallenettu data pysyy siellä, mutta tehokkuuden takia valehdellaan (general block layer, tallenetaaan muistipuskuriin mutta ei levylle)
+- jos halutaan maksimaalinen varmuus, käytetään enemmän rahaa esim. vara-akku systeemi
+- hallitusti ajetaan alas, jos sähköt loppuu
+- journaling: (softalla parannetaan että sähkökatkos ei olisi niin paha) varataan rengaspuskuri johon talletetaan tieto ennen lopullisen levypaikkaan vientiä, hidastaa, mutta kestää paljon paremmin virtakatkoksia
+- aina kun kirjoitetaan muutos, se tehdään kahteen paikkaan (loki, itse levy), näin parempi käsitys järjestelmän tilasta jos se yhtäkkiä kaatuu
+- loki ohittaa muistipuskurit, kirjoitetaan suoraan levylle, peräkkäin raakalohkoille (yleensä nopeimmat mahdolliset operaatiot)
+- jos virrat katkeaa ja nousee uudelleen pystyyn, niin tietojärj. voi ajaa lokissa olevat operaatiot uudestaan (ei haittaa jos tehdään jotain uudestaan), tavallaan replay niin saadaan tietojärj. palautettua oikeaan tilaan
+- maksetaan vähän hitaudesta, mutta saadaan turvallisempi järjestelmä
+- tarkistussumma kertoo onko lokimerkintä ehjä
+- mitä journaloidaan? WRITEBACK - vain metadata talteen (data voi hävitä, mutta sisäinen rakenne pysyy ehjänä), ORDERED - datalohkot kirjoitetaan levylle ennen metadatan lokia (myös tietoturvaominaisuus - vanha data ei voi näkyä kaatumisen jälkeen), JOURNAL - kaikki talteen lokiin (hidasta)
+- "valehteleva" levy tarvitsee IO-barrier komentoja (pakottaa varmasti mahd. nopeasti) lokiin kirjoituksessa
+- loki voi sijaita toisella levyosiolla (SSD!)
+- LogFS (ääripää), kirjoitetaan kovalevylle ainoastaan logia
+- normaalisti levyoperaatiot menevät paikasta toiseen, mutta logisysteemissä kaikki on peräkkäin järjestyksessä
+- paras tapa kovaleyvlle, mutta ei ole täydellinen tiedostojärjestelmä (oikea metadata, vfs, pitää olla keskusmuistissa)
+- kun sähköt katoaa niin hidas nousuun pystyminen, pitää ajaa kaikki logi komennot läpi
+- verkkolevyt: nfs - jos prosessi haluaa avata tiedoston levypalvelimella, asiakasprosessin ei tarvitse tietää mitään järjestelmästä, vfs pyytää nfs:ltä rajapinnan kannalta, konvertoidaan verkkopaketiksi/pyynnöksi
+- palvelimella ei tarvita mitään lisäosia, käyttää normaalia levyoperaatiota
+- voi olla lisävirheitä, esim. verkkopaketit häviävät, palvelin kadoksissa. järjestelmä jää odottamaan jos näin käy
+- /proc: halutaan tarjota ihmiselle helposti luettava järj. kernelin sisäisistä binäärisistä tietorakenteista
+- idea semmoinen että vfs:n taakse proc tiedostojärjestelmä, pyyntö avata tiedosto ohjataan jollekin kernelin sisällä olevalle funktiolle (vfs valehtelee)
+- proc data ei levyllä vaan muistissa taulukosta, data generoidaan vasta kun jokin tarvitsee sitä vfs:n puolelta
+- ennen oli vain read-only mutta lisättiin myös kirjoitus myöhemmin
+- /sys järj. vielä laajennettu /proc:sta, on olemassa kernel olio
+- etu että kun /proc käyttää vfs:ää niin mikä tahansa ohjelma joka voi lukea tiedostoja voi myös lukea sen dataa
+- toinen etu on suojaukset, tehdään tiedostojärj. suojauksilla
+- TMPFS (kaikki muistissa), ENCFS (salaus), NULLFS, LOOBACKFS (hakemisto eri paikkaan)
+- RAID (redundant array of inexpensive/independent disks), ylemmälle tasolle voidaan valehdella (useaa kovalevyä yhdessä ja näytetään järj. useampi kasa lohkoja)
+- RAID-0: liitettyjä levyjä (maksimoi data), RAID-1: peilaus (dataaksoi että data pysyy tallessa jos jokin menee rikki), RAID-5: best of both worlds, laitteisto tai ohjelmisto (kj ydin)
+- kytkentä voi tapahtua laitteiston puolella tai softalla (laiteajurin tasolla)
+- hotswappaus, voi vaihtaa rikkinäisen levyn lennnosta
+- RAID-1: lukunopeus voi olla nopeampi
+- informaatiokoodauksella voidaan taltioda levylle dataa niin että se sietää kovalevyn hajoamisen, mutta dataa on pienempi kuin 2x kuin alkuperäinen
+- perusidea: alkuperäinen data lasketaan vähän lisäinformaatiota, jolla voidaan palauttaa ja jaetaan kolmeen palan (data, data, lisäinfo)
+ja jaetaan kolmelle levylle, näin voidaan aina laskea alkuperäinen data
+- RAID ei korvaa varmuuskopiontia! RAID ei pelasta meitä käyttäjän toimilta, jos komennetaan tuhota tiedosto niin se tuhotaan
+- RAID voi myös mennä hajalle itse, esim. raid-ajuri voi korruptoida dataa molemmille levyille
+
+Luento 21
+=========
+- sockets rajapinta, erikoinen koska löytyy lähes samanlaisena kaikista kj:stä, socket programming interface which enables communcation using protocol implementationinside the operating system kernel
+- from abstract viewpoint sockets provide a connection between two processes
+- socket rajapinta on kokoelma systeemikutsuja, berkleyn tekemä (bsd)
+- unix:ssa idea "everything is a file", sockets on poikkeus sääntöön
+- noudattaa asiakas-palvelin mallia, kaksi prosessia jotka keskustelevat yksi on palvelin (passiivinen) kuuntelee yhteyksiä, asiakas on aktiviivinen joka pyytää asioita
+- TCP protokolla ei pakota tähän malliin, määritelty niin että jos 2 pakettia samaan aikaan niin se pystyy käsittelemään ne
+- kuitenkin helpompaa käyttää client-server malli
+- socket ei fiksaa itseensä yhteen ainoaan protokollaan
+- socket is an endpoint which hides the network protocol implementation details
+- IP protkolla voi olla: looginen putki (stream) vai lähettää paketteja (datagram)
+- jos kahden prosessin välillä täytyy pystyä tunnistamaan miten ne ovat yhteydessä, ip-osoite ei riitä (kiinnitetty yhteen verkkokorttiin)
+- sen takia tarvitaan lisäinformaatiota lähettäjän ja vastaanottajan ip:t, porttinumero ja protokolla
+- htons() routines, big-endian or little-endian? eli tavu-järjestys muuttuu kun data lähetetään (htons = host to network short)
+- aina käytetään verkon tavujärjestystä, tämä on speksattu käyttäjän puolella mistä on pakko pitää huolta
+- htons() voi kirjoittaa aina, jos prosessi on valmiiksi oikea tyyppi niin se on tyhjä rutiini, optimoituu pois ja jos tarvii niin muuttaa oikeaksi
+- tyypillisesti palvelin prosessi on olemassa ja palvelee useampia asiakkaita
+- kerneli rakentaa jonoa yhteyksistä, listen -kutsun parametrin on jonon pituus
+- usein arvo 5, sillä 80-luvulla se oli maksimi määrä
+- ddos = denial of service, lähetetään turhia paketteja niin että jono täyttyy
+- TCP ei sisällä paketteja, voi käydä niin että jos pyydetään 100 tavua, niin vaan 60 tavua tulee läpi
+- TCP siis tekee segmentoinnin, tämä täytyy tietää ja osata varautua etukäteen
+- on nimipalvelukirjastoja, jotka muuttavat symboliset nimet ipv6 osoitteiksi
+- sendfile(), optimoi tilanteita että data lähetetään suoraan socketille kovalevyltä (koitetaan poistaa turhat kopiomisoperaatiot)
+- concurrent servers, fork() kutsut soveltuvat hyvin kopiomiseen
+- jos palvelinprosessi forkataan niin kopio sisältää alkuperäiset socket tiedot
+- myös vikasietoisuus, kaataa vain yhden prosessiin forkin jälkeen
+- huono puoli: fork on raskas operaatio, joten ddos on vaarana
+- säikeet toinen vaihtoehto, nopeampia kyllä mutta voivat kaatua
+- multiplexing (select ja pollit) ovat mekanismeja mitkä eivät käytä rinnakkaisuutta, yhdellä ainoalla säikeellä pystyy hallinoida useampia socketteja
