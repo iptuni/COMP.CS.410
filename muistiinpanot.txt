@@ -2,7 +2,7 @@ Luento 1
 ========
 Ohjelmien virtuaalikone
 -----------------------
-- kj tarjoaa palveluita ja resursseja ohjelmien käyttöön
+- kj tarjoaa palveluita ja resursseja ohjelmien käyttöön 
 - kj etsii tarvittavan muistialueen exe binääri ohjelmalle ja data-alueita, myös extra tilaa (ehkä myöhemmin)
 - kj:n kannalta on yksi tapa käynnistää ohjelma, ei hajauteta
 - kj hallinnoi muistia, voi kieltää käynnistyksen, tekee kaikki päätökset
@@ -76,7 +76,7 @@ Luento 2
 - jos tulee palvelupyyntö niin kj:n suoritus palaa takaisin
 - kj:n täytyy olla huolellisesti rakennettu prosessorin arkkitehtuurin mukaan
 - jotkut rekisterit voivat olla pakotettuja, esim. rekisteri 15 on vain cpu:n käytössä
-- KJ sukupolvet. 0: ei kj, ei suojaksia 1. yksiajo, suojaus spooling, swapping 2. moniajo, vuoronnos, monta käyttäjää 3. virtuaalimuisti 4. hajatetut & verkkojärj.
+- KJ sukupolvet. 0: ei kj, ei suojaksia 1. yksiajo, suojaus spooling, swapping 2. moniajo, vuoronnus, monta käyttäjää 3. virtuaalimuisti 4. hajautetut & verkkojärj.
 - spooling: kun ohjelma suoriutuu, niin samalla ladataan seuraava ohjelma
 - swapping/heittovaihto: kaksi ohjelmaa etenevät rinnakkain, vaihdetaan koko prosessi muistista edes takaisin
 - uudet cput voivat tehdä out of order execution, eli ne ovat monimutkaisia
@@ -176,10 +176,10 @@ Luento 5
 - kontekstin vaihto tallentaa kaikki rekisterit, säikeiden vaihto
 - illegal instruction ja page fault voivat tapahtua konekäskyn aikana
 - page fault, jos tulee virhe ettei ole muistissa jotain, niin kj voi laittaa sinne tiedot ja käynnistää uudelleen käskyn
-- asykroninen keskeytys: reagoidaan tapahtumiin (tulee ulkoiselta laitteelta eikä liity sillä hetkellä suoriettavaan konekäskyyn)
+- asykroninen keskeytys: reagoidaan tapahtumiin (tulee ulkoiselta laitteelta eikä liity sillä hetkellä suoritettavaan konekäskyyn)
 - synkroninen keskeytys: sekventiaalinen (nykyisen käskyn aiheuttama virhe tai tarkoituksellinen tilanne, systeemikutsu SVC)
 - APIC (advanced programmable interrupt controller) hoitaa I/O keskeytykset multicore CPU:lle
-- käsittelijä reagoida keskeytykseen, reagointi voidaan jaotella: nopea vs. hidas -> sallitaan keskeytykset käsittelijän ajon aikana (hidas) vai ei (nopea)
+- käsittelijä reagoi keskeytykseen, reagointi voidaan jaotella: nopea vs. hidas -> sallitaan keskeytykset käsittelijän ajon aikana (hidas) vai ei (nopea)
 - modernisti keskeytykset jaetaan kahteen osaan, ensin top (nopea) haara, merkataan kirjanpito (näin kävi), lisätään se käsittelyjonoon ja palataan takaisin. bottom sitten tekee itse asian
 - top half rajoituksia: se ei liity mitenkään aktiiviseen prosessiin tai sen pinoon
 - suurin osa kj:sta on laiteajureita
@@ -358,13 +358,13 @@ Luento 10
 - sivutus: käsittelyyn vakiomittaiset sivut (esim 512, 1024, 4096 tavua)
 - keskusmuisti jaetaan sivutiloihin (PAGE FRAME)
 - laitteisto hoitamaan kuvaus sivusta sivutilaan
-- häviää vaatimus, että tarvii olla muistissa yhtenäinen muistialue
+- häviää vaatimus, että muistissa tarvitsee olla yhtenäinen muistialue
 - virtuaalipuolella säilyy illuusio, että kaikki muisti on yhtenäisessä muistiavaruudessa, mutta oikeasti voivat olla ihan eri paikoissa fyysisessä muistissa
 - MMUssa nyt pitää olla rekisteripankki
 - muistiosoite jaetaan kahteen osaan. vähemmän merkitsevät bitit kertovat missä kohdassa ollaan muistisivun (esim. 4kt) sisällä
 - enemmän merkitsevät luettelevat sitten itse muistisivuja
 - MMU käsittelee enemmän merkitseviä bittejä
-- jos muunnetaan MMU:ssa niin siellä käsitellään vain enemmän merkitseviä bittejä ja alemmat bitit (sivun sisällä olevat offest indeksiin bitit) annetaan mennä vaan läpi
+- jos muunnetaan MMU:ssa niin siellä käsitellään vain enemmän merkitseviä bittejä ja alemmat bitit (sivun sisällä olevat offset indeksiin bitit) annetaan mennä vaan läpi
 - lisävaatimuksia, rekisteripankki on osa prosessia (pitää vaihtaa kun prosessi vaihtuu) niitä varten tarvitaan etuoikeutetut käskyt
 - ohjelma ei mitenkään voi mennä toisen prosessin osoitteeseen, ei mitään mekanismia, jos kj toimii oikein siis
 - kj:n täytyy pitää kirjaa muistinkäytöstä (myös vapaat alueet)
@@ -495,7 +495,7 @@ Luento 14
 - linux minor ja major: minor page fault = sivu voidaan palauttaa takaisin muistipuskurista, major page fault = sivua ei ole keskusmuistissa ja pitää hakea sekundääriasemalta
 - muistisivut nollataan ennen uudelle prosessille antamista, koodisivut eivät mene lainkaan swap-leyvlle (on jo .exe tiedosto missä se sijaitsee), jaetut sivut mutkistavat rakennetta
 - jos muuttaa koodia ajon aikana, niin se voi kaataa systeemin (ratkaisu: windows lukitsee tiedoston, linux taas linkittää uuteen binääriin)
-- tuhoamalla tideosto a.out rm-komennolla ei tuhoa tiedostoa jos se on ajossa, vasta kun ohjelma lopettaa ajon
+- tuhoamalla tiedosto a.out rm-komennolla ei tuhoa tiedostoa jos se on ajossa, vasta kun ohjelma lopettaa ajon
 - koodisivut voidaan jakaa, linkittämällä prosessit yhteen koodin keskusmuistisivuun
 - virtuaalimuisti käytännössä: muistihallinassa rauta pystyy asettamaan rajoituksia. Rauta voi asettaa alueita mitä ei voi käyttää (DMA siirrot, näyttökortin muisti) -> kj:n täytyy mukautua rautaan
 - voi olla jaettua koodia, jaetut kirjastot keskusmuistissa
